@@ -19,6 +19,7 @@ security = HTTPBearer()
 
 bot_manager = ApiBotManager()
 
+AUTH_TOKEN = os.getenv("auth_token")
 
 class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -58,7 +59,7 @@ def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(secu
             status_code=401, detail="Invalid authentication scheme."
         )
     token = credentials.credentials
-    if token != "123456":
+    if token != AUTH_TOKEN:
         raise HTTPException(
             status_code=403, detail="Invalid access token."
         )
