@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from cryptography.fernet import Fernet
 from chatbot import ApiBot
@@ -31,7 +32,7 @@ class ApiBotManager:
             apibot = ApiBot(config={
                 "email": email,
                 "password": decrypt(passwd),
-                # "model": "text-davinci-002-render-sha-mobile",
+                "model": "text-davinci-002-render-sha-mobile",
             })
             self.apibot_pool.append(apibot)
 
@@ -46,11 +47,12 @@ class ApiBotManager:
         while True:
             apibot = self.get_available_apibot()
             if apibot is not None:
-                resp = await asyncio.to_thread(apibot.get_completion, message)
                 hit_limit(apibot.email)
+                resp = await asyncio.to_thread(apibot.get_completion, message)
                 return resp
             else:
                 if timeout > 0:
+                    logging.info("wait...")
                     await asyncio.sleep(1)
                     timeout -= 1
                 else:
