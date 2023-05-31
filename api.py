@@ -23,7 +23,7 @@ bot_manager = ApiBotManager()
 class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-
+        logging.info(f"Processing request {request.url}")
         response = await call_next(request)
 
         process_time = time.time() - start_time
@@ -37,6 +37,8 @@ def setup_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
+    format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+    handler.setFormatter(format)
     logger.addHandler(handler)
 
 def load_accounts():
