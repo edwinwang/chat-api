@@ -35,7 +35,7 @@ app.add_middleware(TimingMiddleware)
 
 def setup_logger():
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     logger.addHandler(handler)
 

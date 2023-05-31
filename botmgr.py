@@ -9,7 +9,7 @@ key = 'w79zZ6C9UJdb6MGhgD9CWR-yA5JA-dRNUCLiGF_sPFQ='
 aes = Fernet(key)
 memory_storage = storage.MemoryStorage()
 moving_window = strategies.MovingWindowRateLimiter(memory_storage)
-rate_limit_per_minute = RateLimitItemPerMinute(10)
+rate_limit_per_minute = RateLimitItemPerMinute(1)
 
 def decrypt(data):
     return aes.decrypt(data).decode('utf-8')
