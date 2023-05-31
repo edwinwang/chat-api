@@ -94,4 +94,11 @@ if __name__ == "__main__":
         load_accounts()
     )
     setup_logger()
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("port") or 9000), loop='asyncio')
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=int(os.getenv("port") or 9000),
+        loop='asyncio',
+        ssl_keyfile=os.getenv("ssl_keyfile"),
+        ssl_certfile=os.getenv("ssl_certfile"),
+    )
