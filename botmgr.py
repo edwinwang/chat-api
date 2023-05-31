@@ -32,7 +32,7 @@ class ApiBotManager:
             apibot = ApiBot(config={
                 "email": email,
                 "password": decrypt(passwd),
-                "model": "text-davinci-002-render-sha-mobile",
+                # "model": "text-davinci-002-render-sha-mobile",
             })
             self.apibot_pool.append(apibot)
 
