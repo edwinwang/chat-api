@@ -1,10 +1,12 @@
 import asyncio
 import logging
+from collections import deque
 
 from cryptography.fernet import Fernet
 from chatbot import ApiBot
 from typing import List
 from limits import storage, strategies, RateLimitItemPerMinute
+from revChatGPT.typings import Error as RevChatGPTError
 
 key = 'w79zZ6C9UJdb6MGhgD9CWR-yA5JA-dRNUCLiGF_sPFQ='
 aes = Fernet(key)
@@ -23,7 +25,7 @@ def hit_limit(key):
 
 class ApiBotManager:
     def __init__(self):
-        self.apibot_pool = []
+        self.apibot_pool = deque()
 
     def load_accounts(self, accounts: List[dict]):
         for account in accounts:
@@ -34,21 +36,39 @@ class ApiBotManager:
                 "password": decrypt(passwd),
                 # "model": "text-davinci-002-render-sha-mobile",
             })
+            apibot.clear_conversations()
             self.apibot_pool.append(apibot)
+    
+    def reset_bot(self, bot, e):
+        for idx, apibot in enumerate(self.apibot_pool):
+            if apibot.email == bot.email:
+                logging.warn("reset bot %s, [%s]", bot.email, e.code)
+                self.apibot_pool[idx] = ApiBot(config=apibot.dump())
+                break
 
     def get_available_apibot(self):
-        for apibot in self.apibot_pool:
+        for _ in range(len(self.apibot_pool)):  # We will check each apibot at most once
+            apibot = self.apibot_pool.popleft()  # Pop an apibot from the left
             if test_limit(apibot.email):
+                self.apibot_pool.append(apibot)  # If the apibot is available, append it back to the right
                 return apibot
-        return None
+            else:
+                self.apibot_pool.append(apibot)  # If the apibot is not available, still append it back to the right
+        return None  # If we checked all apibots and none are available, return None
 
     async def get_completion(self, message, timeout=60):
         message = message.strip()
         while True:
             apibot = self.get_available_apibot()
             if apibot is not None:
+                logging.info(f"{apibot.email} working...")
                 hit_limit(apibot.email)
-                resp = await asyncio.to_thread(apibot.get_completion, message)
+                try:
+                    resp = await asyncio.to_thread(apibot.get_completion, message)
+                    logging.info(f"{apibot.email} work done")
+                except RevChatGPTError as e:
+                    self.reset_bot(apibot, e)
+                    continue
                 return resp
             else:
                 if timeout > 0:
@@ -57,3 +77,7 @@ class ApiBotManager:
                     timeout -= 1
                 else:
                     return None
+
+
+if __name__ == "__main__":
+    print(aes.encrypt(b"123123"))

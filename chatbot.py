@@ -13,16 +13,17 @@ class ApiBot(Chatbot):
         super().__init__(*args, **kwargs)
 
 
-    def dumps(self):
+    def dump(self):
         return {
             "email": self.config["email"],
-            "token": self.config["access_token"],
+            "password": self.config["password"],
+            "access_token": self.config.get("access_token", None),
         }
 
     def __check_conversations(self) -> None:
-        if len(self.conversation_id_prev_queue) > 50:
+        if len(self.conversation_id_prev_queue) > 10:
             self.clear_conversations()
-
+    
     def get_completion(self, message: str) -> str:
         self.__check_conversations()
         self.reset_chat()

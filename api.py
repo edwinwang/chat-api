@@ -24,11 +24,12 @@ AUTH_TOKEN = os.getenv("auth_token")
 class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-        logging.info(f"Processing request {request.url}")
+        trace_id = request.headers.get("trace_id")
+        logging.info(f"[{trace_id}] Processing request {request.url}")
         response = await call_next(request)
 
         process_time = time.time() - start_time
-        print(f"Request processed in {process_time} secs")
+        logging.info(f"[{trace_id}] Request processed in {process_time} secs")
 
         return response
 
