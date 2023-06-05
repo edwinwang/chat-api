@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from botmgr import ApiBotManager
-from request_convert import APIRequest, convert_api_2_chatgpt
+from api_convert import APIRequest, convert_api_2_chatgpt, new_chat_completion
 
 
 app = FastAPI()
@@ -84,7 +84,7 @@ async def completions(api_request: APIRequest):
     resp = await bot_manager.get_completion(prompt.json())
     if not resp:
         raise HTTPException(status_code=404, detail="No response found")
-    return Response(status_code=200, content=resp)
+    return JSONResponse(status_code=200, content=new_chat_completion(resp))
 
 class Message(BaseModel):
     content: str

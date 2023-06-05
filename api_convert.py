@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional, Dict
 from uuid import uuid4
 
 class ChatGPTAuthor(BaseModel):
@@ -35,7 +36,7 @@ class APIMessage(BaseModel):
 
 class APIRequest(BaseModel):
     messages: list[APIMessage]
-    stream: bool
+    stream: Optional[bool]
     model: str
 
 def convert_api_2_chatgpt(api_request: APIRequest) -> ChatGPTRequest:
@@ -52,6 +53,29 @@ def convert_api_2_chatgpt(api_request: APIRequest) -> ChatGPTRequest:
         chatgpt_request.add_message(api_message.role, api_message.content)
 
     return chatgpt_request
+
+def new_chat_completion(full_text: str) -> Dict:
+    return {
+        "id": "chatcmpl-QXlha2FBbmROaXhpZUFyZUF3ZXNvbWUK",
+        "object": "chat.completion",
+        "created": 0,
+        "model": "gpt-3.5-turbo-0301",
+        "usage": {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        },
+        "choices": [
+            {
+                "message": {
+                    "content": full_text,
+                    "role": "assistant",
+                },
+                "index": 0,
+            },
+        ],
+    }
+
 
 
 if __name__ == "__main__":
