@@ -57,7 +57,7 @@ class CloseConnectionMiddleware:
             await self.app(scope, receive, send)
 
 app.add_middleware(TimingMiddleware)
-app.add_middleware(CloseConnectionMiddleware, allowed_hosts=[os.getenv('allowd_hosts', '').split(',')])
+app.add_middleware(CloseConnectionMiddleware, allowed_hosts=[os.getenv('allowed_hosts', '').split(',')])
 
 def setup_logger():
     logger = logging.getLogger()
