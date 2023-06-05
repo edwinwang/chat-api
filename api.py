@@ -4,6 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
 from pydantic import BaseModel
 import yaml
@@ -34,7 +35,29 @@ class TimingMiddleware(BaseHTTPMiddleware):
 
         return response
 
+class CloseConnectionMiddleware:
+    def __init__(self, app: ASGIApp, allowed_hosts: list[str]) -> None:
+        self.app = app
+        self.allowed_hosts = allowed_hosts
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope['type'] == 'http':
+            host = None
+            for key, value in scope['headers']:
+                if key == b'host':
+                    host = value.decode()
+                    break
+
+            if host and host not in self.allowed_hosts:
+                # 直接返回，不调用app，也就不会返回响应
+                return
+            else:
+                await self.app(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
 app.add_middleware(TimingMiddleware)
+app.add_middleware(CloseConnectionMiddleware, allowed_hosts=[os.getenv('allowd_hosts', '').split(',')])
 
 def setup_logger():
     logger = logging.getLogger()
