@@ -35,7 +35,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-class CloseConnectionMiddleware:
+class CheckHostMiddleware:
     def __init__(self, app: ASGIApp, allowed_hosts: list[str]) -> None:
         self.app = app
         self.allowed_hosts = allowed_hosts
@@ -48,16 +48,23 @@ class CloseConnectionMiddleware:
                     host = value.decode()
                     break
 
-            if host and host not in self.allowed_hosts:
-                # 直接返回，不调用app，也就不会返回响应
-                return
+            if host not in self.allowed_hosts:
+                await send({
+                    'type': 'http.response.start',
+                    'status': 403,
+                    'headers': []
+                })
+                await send({
+                    'type': 'http.response.body',
+                    'body': b''
+                })
             else:
                 await self.app(scope, receive, send)
         else:
             await self.app(scope, receive, send)
 
 app.add_middleware(TimingMiddleware)
-app.add_middleware(CloseConnectionMiddleware, allowed_hosts=[os.getenv('allowed_hosts', '').split(',')])
+app.add_middleware(CheckHostMiddleware, allowed_hosts=[os.getenv('allowed_hosts', '').split(',')])
 
 def setup_logger():
     logger = logging.getLogger()
