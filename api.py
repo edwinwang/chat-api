@@ -11,6 +11,7 @@ import uvicorn
 from dotenv import load_dotenv
 
 from botmgr import ApiBotManager
+from request_convert import APIRequest, convert_api_2_chatgpt
 
 load_dotenv(override=True)
 
@@ -76,10 +77,19 @@ def options():
     }
     return JSONResponse(status_code=200, headers=headers)
 
+
+@app.post('/v1/chat/completions')
+async def completions(api_request: APIRequest):
+    prompt = convert_api_2_chatgpt(api_request)
+    resp = await bot_manager.get_completion(prompt.json())
+    if not resp:
+        raise HTTPException(status_code=404, detail="No response found")
+    return Response(status_code=200, content=resp)
+
 class Message(BaseModel):
     content: str
 
-@app.post('/v1/chat/completions', dependencies=[Depends(verify_access_token)])
+@app.post('/v1/chat/prompt', dependencies=[Depends(verify_access_token)])
 async def completions(prompt: Message):
     resp = await bot_manager.get_completion(prompt.content)
     if not resp:
