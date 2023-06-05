@@ -9,11 +9,11 @@ from pydantic import BaseModel
 import yaml
 import uvicorn
 from dotenv import load_dotenv
+load_dotenv(override=True)
 
 from botmgr import ApiBotManager
 from request_convert import APIRequest, convert_api_2_chatgpt
 
-load_dotenv(override=True)
 
 app = FastAPI()
 security = HTTPBearer()
