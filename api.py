@@ -72,7 +72,7 @@ class CheckHostMiddleware:
             await self.app(scope, receive, send)
 
 app.add_middleware(TimingMiddleware)
-app.add_middleware(CheckHostMiddleware, allowed_hosts=[os.getenv('allowed_hosts', '').split(',')])
+app.add_middleware(CheckHostMiddleware, allowed_hosts=os.getenv('allowed_hosts', '').split(','))
 
 def load_accounts():
     with open('accounts.yaml', 'r') as stream:
