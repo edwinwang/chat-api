@@ -15,6 +15,14 @@ load_dotenv(override=True)
 from botmgr import ApiBotManager
 from api_convert import APIRequest, convert_api_2_chatgpt, new_chat_completion
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+handler.setFormatter(format)
+logger.addHandler(handler)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 security = HTTPBearer()
@@ -27,11 +35,11 @@ class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
         trace_id = request.headers.get("trace_id")
-        logging.info(f"[{trace_id}] Processing request {request.url}")
+        logger.info(f"[{trace_id}] Processing request {request.url}")
         response = await call_next(request)
 
         process_time = time.time() - start_time
-        logging.info(f"[{trace_id}] Request processed in {process_time} secs")
+        logger.info(f"[{trace_id}] Request processed in {process_time} secs")
 
         return response
 
@@ -66,20 +74,12 @@ class CheckHostMiddleware:
 app.add_middleware(TimingMiddleware)
 app.add_middleware(CheckHostMiddleware, allowed_hosts=[os.getenv('allowed_hosts', '').split(',')])
 
-def setup_logger():
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
-    handler.setFormatter(format)
-    logger.addHandler(handler)
-
 def load_accounts():
     with open('accounts.yaml', 'r') as stream:
         try:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            print(exc)
+            logger.critical(exc)
 
 @app.get('/ping')
 def ping():
@@ -135,7 +135,6 @@ if __name__ == "__main__":
     bot_manager.load_accounts(
         load_accounts()
     )
-    setup_logger()
     uvicorn.run(
         app,
         host="0.0.0.0",
