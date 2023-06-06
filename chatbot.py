@@ -1,10 +1,9 @@
 import base64
 import os
 
-from revChatGPT.V1 import Chatbot, logger
+from revChatGPT.V1 import Chatbot
 
 class ApiBot(Chatbot):
-    #@logger(is_timed=True)
     def __init__(self, *args, **kwargs) -> None:
         assert 'email' in kwargs['config']
         email_encode = base64.b64encode(kwargs['config']['email'].encode('utf-8')).decode('utf-8')

@@ -14,6 +14,8 @@ memory_storage = storage.MemoryStorage()
 moving_window = strategies.MovingWindowRateLimiter(memory_storage)
 rate_limit_per_minute = RateLimitItemPerMinute(1)
 
+logger = logging.getLogger(__name__)
+
 def decrypt(data):
     return aes.decrypt(data).decode('utf-8')
 
@@ -31,6 +33,7 @@ class ApiBotManager:
         for account in accounts:
             email = account["email"]
             passwd = account["passwd"]
+            logger.info(f"{email} log in")
             apibot = ApiBot(config={
                 "email": email,
                 "password": decrypt(passwd),
@@ -42,7 +45,7 @@ class ApiBotManager:
     def reset_bot(self, bot, e):
         for idx, apibot in enumerate(self.apibot_pool):
             if apibot.email == bot.email:
-                logging.warn("reset bot %s, [%s]", bot.email, e.code)
+                logger.warn("reset bot %s, [%s]", bot.email, e.code)
                 self.apibot_pool[idx] = ApiBot(config=apibot.dump())
                 break
 
@@ -61,18 +64,18 @@ class ApiBotManager:
         while True:
             apibot = self.get_available_apibot()
             if apibot is not None:
-                logging.info(f"{apibot.email} working...")
+                logger.info(f"{apibot.email} working...")
                 hit_limit(apibot.email)
                 try:
                     resp = await asyncio.to_thread(apibot.get_completion, message)
-                    logging.info(f"{apibot.email} work done")
+                    logger.info(f"{apibot.email} work done")
                 except RevChatGPTError as e:
                     self.reset_bot(apibot, e)
                     continue
                 return resp
             else:
                 if timeout > 0:
-                    logging.info("wait...")
+                    logger.info("wait...")
                     await asyncio.sleep(1)
                     timeout -= 1
                 else:
@@ -80,4 +83,4 @@ class ApiBotManager:
 
 
 if __name__ == "__main__":
-    print(aes.encrypt(b"123123"))
+    print(aes.encrypt(b"blz20aL02$!g"))
