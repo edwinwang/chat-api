@@ -47,6 +47,7 @@ class ApiBotManager:
             if apibot.email == bot.email:
                 logger.warn("reset bot %s, [%s]", bot.email, e.code)
                 self.apibot_pool[idx] = ApiBot(config=apibot.dump())
+                self.apibot_pool[idx].clear_conversations()
                 break
 
     def get_available_apibot(self):
@@ -61,6 +62,7 @@ class ApiBotManager:
 
     async def get_completion(self, message, timeout=60):
         message = message.strip()
+        retry = 0
         while True:
             apibot = self.get_available_apibot()
             if apibot is not None:
@@ -71,6 +73,8 @@ class ApiBotManager:
                     logger.info(f"{apibot.email} work done")
                 except RevChatGPTError as e:
                     self.reset_bot(apibot, e)
+                    retry += 1
+                    if retry > 3: break
                     continue
                 return resp
             else:
@@ -83,4 +87,4 @@ class ApiBotManager:
 
 
 if __name__ == "__main__":
-    print(aes.encrypt(b"blz20aL02$!g"))
+    print(aes.encrypt(b"123123"))
