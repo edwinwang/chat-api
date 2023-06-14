@@ -108,7 +108,7 @@ def options():
     return JSONResponse(status_code=200, headers=headers)
 
 
-@app.post('/v1/chat/completions')
+@app.post('/v1/chat/completions', dependencies=[Depends(verify_access_token)])
 async def completions(api_request: APIRequest):
     prompt = convert_api_2_chatgpt(api_request)
     resp = await bot_manager.get_completion(prompt.json())
