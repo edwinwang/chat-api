@@ -118,10 +118,11 @@ async def completions(api_request: APIRequest):
 
 class Message(BaseModel):
     content: str
+    model: str=None
 
 @app.post('/v1/chat/prompt', dependencies=[Depends(verify_access_token)])
 async def completions(prompt: Message):
-    resp = await bot_manager.get_completion(prompt.content)
+    resp = await bot_manager.get_completion(prompt.content, prompt.model)
     if not resp:
         raise HTTPException(status_code=404, detail="No response found")
     return Response(status_code=200, content=resp)

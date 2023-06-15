@@ -23,10 +23,10 @@ class ApiBot(Chatbot):
         if len(self.conversation_id_prev_queue) > 10:
             self.clear_conversations()
     
-    def get_completion(self, message: str) -> str:
+    def get_completion(self, message: str, model: str=None) -> str:
         self.__check_conversations()
         self.reset_chat()
-        for data in self.ask(message, auto_continue=True):
+        for data in self.ask(message, auto_continue=True, model=model):
             response = data["message"]
         return response
 
