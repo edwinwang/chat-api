@@ -1,5 +1,6 @@
 import os, time
 import logging
+from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -7,6 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
 from pydantic import BaseModel
+from typing import Optional
 import yaml
 import uvicorn
 from dotenv import load_dotenv
@@ -116,13 +118,24 @@ async def completions(api_request: APIRequest):
         raise HTTPException(status_code=404, detail="No response found")
     return JSONResponse(status_code=200, content=new_chat_completion(resp))
 
-class Message(BaseModel):
+class ChatModel(str, Enum):
+    gpt3 = "text-davinci-002-render-sha"
+    gpt3_mobile = "text-davinci-002-render-sha-mobile"
+
+class PromptRequest(BaseModel):
     content: str
-    model: str=None
+    model: Optional[ChatModel] = ChatModel.gpt3
+    openid: Optional[str] = None
+    new_chat: Optional[bool] = False
 
 @app.post('/v1/chat/prompt', dependencies=[Depends(verify_access_token)])
-async def completions(prompt: Message):
-    resp = await bot_manager.get_completion(prompt.content, prompt.model)
+async def completions(prompt: PromptRequest):
+    resp = await bot_manager.get_completion(
+        message=prompt.content, 
+        model=prompt.model.value, 
+        openid=prompt.openid,
+        new_chat=prompt.new_chat
+    )
     if not resp:
         raise HTTPException(status_code=404, detail="No response found")
     return Response(status_code=200, content=resp)

@@ -18,17 +18,38 @@ class ApiBot(Chatbot):
             "password": self.config["password"],
             "access_token": self.config.get("access_token", None),
         }
-
-    def __check_conversations(self) -> None:
-        if len(self.conversation_id_prev_queue) > 10:
-            self.clear_conversations()
     
-    def get_completion(self, message: str, model: str=None) -> str:
-        self.__check_conversations()
-        self.reset_chat()
-        for data in self.ask(message, auto_continue=True, model=model):
-            response = data["message"]
-        return response
+    @property
+    def disable_history(self):
+        return True
+    
+    @disable_history.setter
+    def disable_history(self, value):
+        pass
+    
+    def get_completion(self, message: str, conversation_id: str=None, parent_id: str=None, model: str=None) -> str:
+        """Get a completion from ChatGPT
+        Args:
+            message (str): the prompt to send
+            conversation_id (str): _id of the conversation, used to continue on. Defaults to None.
+            parent_id (str): _id of the previous response, used to continue on. Defaults to None.
+            model (str, optional): "text-davinci-002-render-sha" or "text-davinci-002-render-sha-mobile". Defaults to None.
+
+        Returns:
+            dict {
+                "author": str,
+                "message": str,
+                "conversation_id": str,
+                "parent_id": str,
+                "model": str,
+                "finish_details": str, # "max_tokens" or "stop"
+                "end_turn": bool,
+            }
+        """
+        resp = {}
+        for data in self.ask(message, auto_continue=True, model=model, conversation_id=conversation_id, parent_id=parent_id):
+            resp = data
+        return resp
 
 
     @property
