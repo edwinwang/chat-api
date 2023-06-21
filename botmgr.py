@@ -47,7 +47,7 @@ class ApiBotManager:
                 "email": email,
                 "password": decrypt(passwd),
             })
-            time.sleep(random.uniform(3, 8))
+            time.sleep(random.uniform(2, 5))
             self.apibot_pool.append(apibot)
     
     def reset_bot(self, bot, e):
@@ -100,14 +100,24 @@ class ApiBotManager:
                 session.add(conversation)
             else:
                 user.conversation_id = conversation_id
-                user.conversation.current_node = parent_id
+                if user.conversation:
+                    user.conversation.current_node = parent_id
+                else:
+                    conversation = models.Conversation(
+                        conversation_id=conversation_id,
+                        current_node=parent_id,
+                        owner_email=email,
+                        user_id=user.id
+                    )
+                    session.add(conversation)
+                    
             await session.commit()
     
     async def new_conversation(self, openid):
-        with models.Session() as session:
+        async with models.Session() as session:
             user = await models.User.get_by_openid_with_session(session, openid)
             if user:
-                user.conversation_id = None
+                user.conversation_id = ''
             await session.commit()
 
     async def get_completion(self, message: str, model: str=None, openid: str=None, new_chat: bool=False, timeout: int=60):

@@ -73,7 +73,7 @@ class User(Base):
     openid = Column(String(100), unique=True)
     conversation_id = Column(String(40), nullable=False)
     conversation = relationship('Conversation',
-        lazy='joined', innerjoin=True, uselist=False,
+        lazy='joined', uselist=False,
         primaryjoin="User.conversation_id==Conversation.conversation_id",
         foreign_keys='User.conversation_id',
     )
