@@ -99,6 +99,13 @@ class ApiBotManager:
                 user.conversation_id = conversation_id
                 user.conversation.current_node = parent_id
             await session.commit()
+    
+    async def new_conversation(self, openid):
+        with models.Session() as session:
+            user = await models.User.get_by_openid_with_session(session, openid)
+            if user:
+                user.conversation_id = None
+            await session.commit()
 
     async def get_completion(self, message: str, model: str=None, openid: str=None, new_chat: bool=False, timeout: int=60):
         message = message.strip()
@@ -135,6 +142,11 @@ class ApiBotManager:
                     if e.code == 429:
                         logger.error("[%s] rate limit", apibot.email)
                         return None
+                    elif e.code == 400:
+                        logger.warning("conversaion missing for user [%s] [%s]", openid, converstation_id)
+                        if openid:
+                            await self.new_conversation(openid)
+                        return "会话丢失，请开启新的聊天"
                     self.reset_bot(apibot, e)
                     retry += 1
                     if retry > 3: break
