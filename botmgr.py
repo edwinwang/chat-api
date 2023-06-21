@@ -2,6 +2,8 @@ import os
 import json
 import asyncio
 import logging
+import time
+import random
 from collections import deque
 from functools import partial
 
@@ -45,6 +47,7 @@ class ApiBotManager:
                 "email": email,
                 "password": decrypt(passwd),
             })
+            time.sleep(random.uniform(3, 8))
             self.apibot_pool.append(apibot)
     
     def reset_bot(self, bot, e):
