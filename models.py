@@ -130,10 +130,26 @@ async def create_tables():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
+async def import_accounts():
+    #从accounts.yaml读取账号，导入到Account表
+    import yaml
+    async with Session() as session:
+        with open('accounts.yaml', 'r') as file:
+            data = yaml.safe_load(file)
+            for item in data:
+                account = Account(
+                    email=item['email'],
+                    password=item['passwd'],
+                    access_token="",
+                    is_active=1
+                )
+                session.add(account)
+            await session.commit()
+
 if __name__ == '__main__':
     # 创建表
     import asyncio
-    asyncio.run(create_tables())
+    asyncio.run(import_accounts())
 
 
 
