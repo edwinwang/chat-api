@@ -2,6 +2,8 @@ import os
 import json
 import asyncio
 import logging
+import time
+import random
 from collections import deque
 from functools import partial
 
@@ -43,6 +45,7 @@ class ApiBotManager:
                 "email": email,
                 "password": decrypt(passwd),
             })
+            time.sleep(random.uniform(2, 5))
             self.apibot_pool.append(apibot)
     
     def add_bot(self, bot):
@@ -103,7 +106,24 @@ class ApiBotManager:
                 session.add(conversation)
             else:
                 user.conversation_id = conversation_id
-                user.conversation.current_node = parent_id
+                if user.conversation:
+                    user.conversation.current_node = parent_id
+                else:
+                    conversation = models.Conversation(
+                        conversation_id=conversation_id,
+                        current_node=parent_id,
+                        owner_email=email,
+                        user_id=user.id
+                    )
+                    session.add(conversation)
+                    
+            await session.commit()
+    
+    async def new_conversation(self, openid):
+        async with models.Session() as session:
+            user = await models.User.get_by_openid_with_session(session, openid)
+            if user:
+                user.conversation_id = ''
             await session.commit()
 
     async def get_completion(self, message: str, model: str=None, openid: str=None, new_chat: bool=False, timeout: int=60):
@@ -142,6 +162,11 @@ class ApiBotManager:
                     if e.code == 429:
                         logger.error("[%s] rate limit", apibot.email)
                         return None
+                    elif e.code == 400:
+                        logger.warning("conversaion missing for user [%s] [%s]", openid, converstation_id)
+                        if openid:
+                            await self.new_conversation(openid)
+                        return "会话丢失，请开启新的聊天"
                     self.reset_bot(apibot, e)
                     retry += 1
                     if retry > 3: break
