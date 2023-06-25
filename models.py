@@ -12,7 +12,7 @@ from dotenv import load_dotenv; load_dotenv(override=True)
 
 
 # 创建数据库连接
-engine = create_async_engine(os.environ["mysql_uri"], echo=True)
+engine = create_async_engine(os.environ["mysql_uri"], pool_recycle=3600)
 # engine = create_engine(os.environ["mysql_uri"], echo=True)
 
 # 创建会话工厂

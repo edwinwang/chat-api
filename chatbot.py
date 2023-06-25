@@ -55,3 +55,6 @@ class ApiBot(Chatbot):
     @property
     def email(self) -> str:
         return self.config["email"]
+    
+    def remove_access_token(self):
+        self.config["access_token"] = None

@@ -13,13 +13,11 @@ from revChatGPT.typings import Error as RevChatGPTError
 
 import models
 
-key = 'w79zZ6C9UJdb6MGhgD9CWR-yA5JA-dRNUCLiGF_sPFQ='
-aes = Fernet(key)
+aes = Fernet(os.getenv('account_key'))
 redis_storage = storage.RedisStorage(uri=os.getenv('redis_uri'))
 moving_window = strategies.MovingWindowRateLimiter(redis_storage)
 rate_limit_per_minute = RateLimitItemPerMinute(1)
 rate_limit_per_hour = RateLimitItemPerHour(60)
-moving_window.test(rate_limit_per_hour, 'botmgr', "122y")
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +45,14 @@ class ApiBotManager:
             })
             self.apibot_pool.append(apibot)
     
+    def add_bot(self, bot):
+        self.apibot_pool.append(bot)
+    
+    def remove_bot(self, bot):
+        for idx, apibot in enumerate(self.apibot_pool):
+            if apibot.email == bot.email:
+                self.apibot_pool.pop(idx)
+
     def reset_bot(self, bot, e):
         for idx, apibot in enumerate(self.apibot_pool):
             if apibot.email == bot.email:
@@ -116,6 +122,7 @@ class ApiBotManager:
                 logger.info(f"{apibot.email} working...")
                 hit_limit(apibot.email)
                 try:
+                    apibot.reset_chat()
                     func = partial(apibot.get_completion,
                         message = message,
                         conversation_id = converstation_id,
