@@ -1,14 +1,14 @@
 import os, time
 import logging
 from enum import Enum
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.requests import Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Annotated
 import yaml
 import uvicorn
 from dotenv import load_dotenv
@@ -129,7 +129,7 @@ class PromptRequest(BaseModel):
     new_chat: Optional[bool] = False
 
 @app.post('/v1/chat/prompt', dependencies=[Depends(verify_access_token)])
-async def completions(prompt: PromptRequest):
+async def completions(prompt: PromptRequest, accept: Annotated[str|None, Header()]=None):
     resp = await bot_manager.get_completion(
         message=prompt.content, 
         model=prompt.model.value, 
@@ -138,7 +138,10 @@ async def completions(prompt: PromptRequest):
     )
     if not resp:
         raise HTTPException(status_code=404, detail="No response found")
-    return Response(status_code=200, content=resp)
+    if accept == "application/json":
+        return JSONResponse(status_code=200, content=resp)
+    else:
+        return Response(status_code=200, content=resp)
 
 @app.on_event("startup")
 def startup_event():
