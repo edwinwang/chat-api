@@ -2,13 +2,14 @@ import datetime
 import os
 
 # 导入SQLAlchemy、create_engine和Column、String、Integer、Float、Boolean、DateTime等类
-from sqlalchemy import create_engine, Column, String, Integer, Float, Boolean, DateTime, ForeignKey, JSON, select
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, select, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import relationship, backref
 
-from dotenv import load_dotenv; load_dotenv(override=True)
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 
 # 创建数据库连接
@@ -23,6 +24,7 @@ Session = sessionmaker(bind=engine, class_=AsyncSession)
 # 声明基类
 Base = declarative_base()
 
+
 # 定义模型
 class Account(Base):
     __tablename__ = 'accounts'
@@ -30,8 +32,10 @@ class Account(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String(50), unique=True)
     password = Column(String(120))
-    access_token = Column(String(120))
+    access_token = Column(Text)
+    puid = Column(String(120))
     is_active = Column(Boolean, default=True)
+
 
 class Conversation(Base):
     __tablename__ = 'conversations'
@@ -49,9 +53,10 @@ class Conversation(Base):
 
     @classmethod
     async def get_by_cid_with_session(cls, session: AsyncSession, cid: str) -> 'Conversation':
-        stmt = select(cls).filter(cls.conversation_id==cid)
+        stmt = select(cls).filter(cls.conversation_id == cid)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
 
 class Message(Base):
     __tablename__ = 'messages'
@@ -63,8 +68,9 @@ class Message(Base):
     parent_id = Column(String(40), ForeignKey('messages.message_id'))
     conversation_id = Column(String(40), ForeignKey('conversations.conversation_id'))
     conversation = relationship('Conversation', backref='messages')
-     # Relationship to parent message
+    # Relationship to parent message
     parent = relationship('Message', remote_side=[message_id], backref=backref('children', lazy='dynamic'))
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -72,8 +78,10 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     openid = Column(String(100), unique=True)
     conversation_id = Column(String(40), nullable=False)
-    conversation = relationship('Conversation',
-        lazy='joined', uselist=False,
+    conversation = relationship(
+        'Conversation',
+        lazy='joined',
+        uselist=False,
         primaryjoin="User.conversation_id==Conversation.conversation_id",
         foreign_keys='User.conversation_id',
     )
@@ -81,13 +89,13 @@ class User(Base):
     @classmethod
     async def get_by_openid(cls, openid: str) -> 'User':
         async with Session() as session:
-            stmt = select(cls).filter(cls.openid==openid)
+            stmt = select(cls).filter(cls.openid == openid)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
     
     @classmethod
     async def get_by_openid_with_session(cls, session: AsyncSession, openid: str) -> 'User':
-        stmt = select(cls).filter(cls.openid==openid)
+        stmt = select(cls).filter(cls.openid == openid)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
     
@@ -130,8 +138,9 @@ async def create_tables():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
+
 async def import_accounts():
-    #从accounts.yaml读取账号，导入到Account表
+    # 从accounts.yaml读取账号，导入到Account表
     import yaml
     async with Session() as session:
         with open('accounts.yaml', 'r') as file:
@@ -150,6 +159,3 @@ if __name__ == '__main__':
     # 创建表
     import asyncio
     asyncio.run(import_accounts())
-
-
-

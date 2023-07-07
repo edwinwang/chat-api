@@ -1,7 +1,9 @@
 import base64
 import os
 
+
 from revChatGPT.V1 import Chatbot
+
 
 class ApiBot(Chatbot):
     def __init__(self, *args, **kwargs) -> None:
@@ -10,14 +12,6 @@ class ApiBot(Chatbot):
         cache_path = os.path.join('cache', f'{email_encode}.json')
         kwargs['config']['cache_path'] = cache_path
         super().__init__(*args, **kwargs)
-
-
-    def dump(self):
-        return {
-            "email": self.config["email"],
-            "password": self.config["password"],
-            "access_token": self.config.get("access_token", None),
-        }
     
     @property
     def disable_history(self):
@@ -26,8 +20,14 @@ class ApiBot(Chatbot):
     @disable_history.setter
     def disable_history(self, value):
         pass
+
+    def api_request(self, data) -> str:
+        resp = {}
+        for part in self._Chatbot__send_request(data, auto_continue=True):
+            resp = part
+        return resp
     
-    def get_completion(self, message: str, conversation_id: str=None, parent_id: str=None, model: str=None) -> str:
+    def prompt(self, message: str, conversation_id: str=None, parent_id: str=None, model: str=None) -> str:
         """Get a completion from ChatGPT
         Args:
             message (str): the prompt to send

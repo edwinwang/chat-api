@@ -1,4 +1,6 @@
-import os, time
+from dotenv import load_dotenv; load_dotenv()  # noqa: E702
+import os
+import time
 import logging
 from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException, Header
@@ -11,8 +13,6 @@ from pydantic import BaseModel
 from typing import Optional, Annotated
 import yaml
 import uvicorn
-from dotenv import load_dotenv
-load_dotenv(override=True)
 
 from botmgr import ApiBotManager
 from api_convert import APIRequest, convert_api_2_chatgpt, new_chat_completion
@@ -24,7 +24,7 @@ format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s
 handler.setFormatter(format)
 logger.addHandler(handler)
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("api")
 
 app = FastAPI()
 security = HTTPBearer()
@@ -32,6 +32,7 @@ security = HTTPBearer()
 bot_manager = ApiBotManager()
 
 AUTH_TOKEN = os.getenv("auth_token")
+
 
 class TimingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -44,6 +45,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
         logger.info(f"[{trace_id}] Request processed in {process_time} secs")
 
         return response
+
 
 class CheckHostMiddleware:
     def __init__(self, app: ASGIApp, allowed_hosts: list[str]) -> None:
@@ -73,8 +75,10 @@ class CheckHostMiddleware:
         else:
             await self.app(scope, receive, send)
 
+
 app.add_middleware(TimingMiddleware)
 app.add_middleware(CheckHostMiddleware, allowed_hosts=os.getenv('allowed_hosts', '').split(','))
+
 
 def load_accounts():
     with open('accounts.yaml', 'r') as stream:
@@ -83,9 +87,11 @@ def load_accounts():
         except yaml.YAMLError as exc:
             logger.critical(exc)
 
+
 @app.get('/ping')
 def ping():
     return 'pong'
+
 
 def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if credentials.scheme != "Bearer":
@@ -100,6 +106,17 @@ def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(secu
     return True
 
 
+class Account(BaseModel):
+    email: str
+    password: str
+
+
+@app.post('/admin/add_bot', dependencies=[Depends(verify_access_token)])
+async def add_bot(account: Account):
+    await bot_manager.add_account(account.email, account.password)
+    return "success"
+
+
 @app.options('/v1/chat/completions')
 def options():
     headers = {
@@ -112,15 +129,17 @@ def options():
 
 @app.post('/v1/chat/completions', dependencies=[Depends(verify_access_token)])
 async def completions(api_request: APIRequest):
-    prompt = convert_api_2_chatgpt(api_request)
-    resp = await bot_manager.get_completion(prompt.json())
+    request = convert_api_2_chatgpt(api_request)
+    resp = await bot_manager.api_request(request.dict())
     if not resp:
         raise HTTPException(status_code=404, detail="No response found")
     return JSONResponse(status_code=200, content=new_chat_completion(resp))
 
+
 class ChatModel(str, Enum):
     gpt3 = "text-davinci-002-render-sha"
     gpt3_mobile = "text-davinci-002-render-sha-mobile"
+
 
 class PromptRequest(BaseModel):
     content: str
@@ -128,11 +147,12 @@ class PromptRequest(BaseModel):
     openid: Optional[str] = None
     new_chat: Optional[bool] = False
 
+
 @app.post('/v1/chat/prompt', dependencies=[Depends(verify_access_token)])
-async def completions(prompt: PromptRequest, accept: Annotated[str|None, Header()]=None):
-    resp = await bot_manager.get_completion(
-        message=prompt.content, 
-        model=prompt.model.value, 
+async def prompt(prompt: PromptRequest, accept: Annotated[str | None, Header()] = None):
+    resp = await bot_manager.prompt(
+        message=prompt.content,
+        model=prompt.model.value,
         openid=prompt.openid,
         new_chat=prompt.new_chat
     )
@@ -143,15 +163,17 @@ async def completions(prompt: PromptRequest, accept: Annotated[str|None, Header(
     else:
         return Response(status_code=200, content=resp)
 
+
 @app.on_event("startup")
-def startup_event():
-    global bot_manager
-    
+async def startup_event():
+    await bot_manager.init()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await bot_manager.close()
 
 if __name__ == "__main__":
-    bot_manager.load_accounts(
-        load_accounts()
-    )
     uvicorn.run(
         app,
         # host="0.0.0.0",
