@@ -353,7 +353,7 @@ class ApiBotManager:
             return resp.get("message", "")
         else:
             logger.error(reason)
-            if openid and reason == "conversation_missing":
+            if openid and reason == "conversation_not_found":
                 await self.new_conversation(openid)
             return ""
 
