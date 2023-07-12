@@ -309,6 +309,7 @@ class ApiBotManager:
         return False, "max_retry"
 
     async def api_request(self, data):
+        data["history_and_training_disabled"] = True
         parmas = {
             "name": "post_messages",
             **data
@@ -343,6 +344,7 @@ class ApiBotManager:
             parent_id=parent_id,
             model=model,
             auto_continue=True,
+            history_and_training_disabled=True
         )
         resp, reason = await self.work(func, email, timeout)
         if resp:
