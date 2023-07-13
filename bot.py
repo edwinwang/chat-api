@@ -307,6 +307,7 @@ class Bot:
             message = message.strip("\n")
             for i in self.continue_write(
                 conversation_id=cid,
+                parent_id=pid,
                 model=model,
                 timeout=timeout,
                 auto_continue=True,
@@ -792,6 +793,7 @@ class AsyncBot(Bot):
             message = message.strip("\n")
             async for i in self.continue_write(
                 conversation_id=cid,
+                parent_id=pid,
                 model=model,
                 timeout=timeout,
                 auto_continue=True,
