@@ -270,8 +270,9 @@ class Bot:
                     bot_logger.warning(f"Decode response failed: {e}")
                     continue
                 if not self.check_fields(line):
-                    bot_logger.error(f"Invalid response: {line}")
-                    raise OpenAIError("invalid_response")
+                    continue
+                    # bot_logger.error(f"Invalid response: {line}")
+                    # raise OpenAIError("invalid_response")
                 if line.get("message").get("author").get("role") != "assistant":
                     continue
                 cid = line["conversation_id"]
@@ -756,8 +757,9 @@ class AsyncBot(Bot):
                     bot_logger.warning(f"Decode response failed: {e}")
                     continue
                 if not self.check_fields(line):
-                    bot_logger.error(f"Invalid response: {line}")
-                    raise OpenAIError("invalid_response")
+                    continue
+                    # bot_logger.error(f"Invalid response: {line}")
+                    # raise OpenAIError("invalid_response")
                 if line.get("message").get("author").get("role") != "assistant":
                     continue
                 cid = line["conversation_id"]
