@@ -49,7 +49,7 @@ class Bot:
         self.puid = puid
         self.check_access_token()
 
-        headers = {
+        self.headers = {
             "Accept": "text/event-stream",
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
@@ -60,13 +60,13 @@ class Bot:
             ),
         }
         if self.puid:
-            headers.update({"PUID": self.puid})
+            self.headers.update({"PUID": self.puid})
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
         self.httpx_cli = httpx.Client(
             base_url=base_url,
             proxies=self.proxies,
-            headers=headers,
+            headers=self.headers,
             http2=True,
         )
 
@@ -87,10 +87,11 @@ class Bot:
     def update(self, token: str, puid: str = None):
         if token and self.access_token != token:
             self.access_token = token
-            self.httpx_cli.headers.update({"Authorization": f"Bearer {token}"})
+            self.headers.update({"Authorization": f"Bearer {token}"})
         if puid and self.puid != puid:
             self.puid = puid
-            self.httpx_cli.headers.update({"PUID": self.puid})
+            self.headers.update({"PUID": self.puid})
+        self.httpx_cli.headers.update(self.headers)
 
     def captcha_solver(self, images: list[str], challenge_details: dict) -> int:
         # Create tempfile
@@ -668,6 +669,7 @@ class AsyncBot(Bot):
             headers=self.headers,
             proxies=self.proxies,
         )
+        self.httpx_cli.headers.update({"Authorization": f"Bearer {self.access_token}"})
 
     async def close(self):
         await self.httpx_cli.aclose()
