@@ -49,7 +49,7 @@ class Bot:
         self.puid = puid
         self.check_access_token()
 
-        self.headers = {
+        headers = {
             "Accept": "text/event-stream",
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
@@ -60,13 +60,13 @@ class Bot:
             ),
         }
         if self.puid:
-            self.headers.update({"PUID": self.puid})
+            headers.update({"PUID": self.puid})
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
         self.httpx_cli = httpx.Client(
             base_url=base_url,
             proxies=self.proxies,
-            headers=self.headers,
+            headers=headers,
             http2=True,
         )
 
@@ -87,10 +87,10 @@ class Bot:
     def update(self, token: str, puid: str = None):
         if token and self.access_token != token:
             self.access_token = token
-            self.headers.update({"Authorization": f"Bearer {token}"})
+            self.httpx_cli.headers.update({"Authorization": f"Bearer {token}"})
         if puid and self.puid != puid:
             self.puid = puid
-            self.headers.update({"PUID": puid})
+            self.httpx_cli.headers.update({"PUID": self.puid})
 
     def captcha_solver(self, images: list[str], challenge_details: dict) -> int:
         # Create tempfile
