@@ -126,6 +126,7 @@ class ApiBotManager:
                             auth = Auth(account["email"], account["password"])
                             access_token = await asyncio.to_thread(auth.get_access_token)
                             await self.update_account(email, access_token, "")
+                            logger.info(f'{account["email"]} login')
                         del self.wait_auth[email]
                         break
             except Exception as e:
@@ -291,6 +292,10 @@ class ApiBotManager:
                     elif e.code == 429:
                         logger.warning(f"{apibot.email} too many requests")
                         return False, "too_many_requests"
+                    elif e.code == 401:
+                        logger.warning(f"{apibot.email} auth error")
+                        self.wait_auth[apibot.email] = 0
+                        return False, "auth_error"
                     return False, "server_error"
                 except Exception as e:
                     logger.error(f"{apibot.email} work failed {e}")
