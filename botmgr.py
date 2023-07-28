@@ -320,10 +320,10 @@ class ApiBotManager:
             **data
         }
         resp, reason = await self.work(parmas)
-        resp.pop("email", None)
         if not resp:
             logger.error(reason)
         else:
+            resp.pop("email", None)
             return resp.get("message", "")
 
     async def prompt(
