@@ -307,7 +307,7 @@ class ApiBotManager:
             except BotOfflineError:
                 return False, "bot_offline"
             except BotBusyError:
-                continue
+                return False, "bot_busy"
             except Exception as e:
                 logger.error(f"{apibot.email} work failed {e}")
                 retry += 1
