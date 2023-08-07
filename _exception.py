@@ -13,6 +13,14 @@ class AccessTokenExpiredError(AccessTokenError):
     pass
 
 
+class BotOfflineError(BotError):
+    pass
+
+
+class BotBusyError(BotError):
+    pass
+
+
 class OpenAIError(BotError):
     def __init__(self, message: str, code: int = 0, *args: object) -> None:
         self.message = message

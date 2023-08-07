@@ -12,7 +12,7 @@ from OpenAIAuth import Auth0 as Auth
 
 import models
 from bot import AsyncBot
-from _exception import OpenAIError
+from _exception import OpenAIError, BotOfflineError, BotBusyError
 
 aes = Fernet(os.getenv('account_key'))
 redis_storage = storage.RedisStorage(uri=os.getenv('redis_uri'))
@@ -146,7 +146,7 @@ class ApiBotManager:
                 exp = self.token_expire(access_token)
                 if exp - now < 60 * 60:
                     self.wait_auth[email] = exp - now
-                    self.remove_bot(email)
+                    await self.remove_bot(email)
                 else:
                     self.wait_auth[email] = exp - now
                     self.update_bot(email, access_token, puid=account.get('puid', None))
@@ -210,14 +210,14 @@ class ApiBotManager:
         if email:
             bot = self.apibot_pool.pop(email, None)
             if not bot:
-                logger.debug(f"{email} is offline")
-                return None
+                logger.warning(f"{email} is offline")
+                raise BotOfflineError(f"{email} is offline")
             self.apibot_pool[email] = bot
             if await test_limit(email):
                 return bot
             else:
                 logger.info(f"{email} is busy")
-                return None
+                raise BotBusyError(f"{email} is busy")
         else:
             cnt = len(self.apibot_pool)
             while cnt > 0:
@@ -249,10 +249,10 @@ class ApiBotManager:
                 )
                 session.add(conversation)
             else:
-                user.conversation_id = conversation_id
-                if user.conversation:
+                if user.conversation_id == conversation_id:
                     user.conversation.current_node = parent_id
                 else:
+                    user.conversation_id = conversation_id
                     conversation = models.Conversation(
                         conversation_id=conversation_id,
                         current_node=parent_id,
@@ -271,46 +271,50 @@ class ApiBotManager:
 
     async def work(self, func: dict, email: str = None, timeout: int = 60):
         retry = 0
-        func_name = func.pop("name")
+        func_name = func.get("name")
         while True:
-            apibot = await self.get_available_apibot(email)
-            if apibot is not None:
-                logger.info(f"{apibot.email} working...")
-                await hit_limit(apibot.email)
-                try:
+            try:
+                apibot = await self.get_available_apibot(email)
+                if apibot is not None:
+                    logger.info(f"{apibot.email} working...")
+                    await hit_limit(apibot.email)
                     exec = getattr(apibot, func_name)
                     resp = None
                     async for resp in exec(**func):
                         resp = resp
                     resp["email"] = apibot.email
                     logger.info(f"{apibot.email} work done")
-                except OpenAIError as e:
-                    logger.error(f"{apibot.email} openai server error {e}")
-                    if e.code == 404:
-                        logger.warning(f"{apibot.email} conversation not found")
-                        return False, "conversation_not_found"
-                    elif e.code == 429:
-                        logger.warning(f"{apibot.email} too many requests")
-                        return False, "too_many_requests"
-                    elif e.code == 401:
-                        logger.warning(f"{apibot.email} auth error")
-                        self.wait_auth[apibot.email] = 0
-                        return False, "auth_error"
-                    return False, "server_error"
-                except Exception as e:
-                    logger.error(f"{apibot.email} work failed {e}")
-                    retry += 1
-                    if retry > 3:
-                        break
-                    continue
-                return resp, 'success'
-            else:
-                if timeout > 0:
-                    logger.info("no bot available, wait...")
-                    await asyncio.sleep(1)
-                    timeout -= 1
                 else:
-                    return False, "timeout"
+                    if timeout > 0:
+                        logger.info("no bot available, wait...")
+                        await asyncio.sleep(1)
+                        timeout -= 1
+                    else:
+                        return False, "timeout"
+            except OpenAIError as e:
+                logger.error(f"{apibot.email} openai server error {e}")
+                if e.code == 404:
+                    logger.warning(f"{apibot.email} conversation not found")
+                    return False, "conversation_not_found"
+                elif e.code == 429:
+                    logger.warning(f"{apibot.email} too many requests")
+                    return False, "too_many_requests"
+                elif e.code == 401:
+                    logger.warning(f"{apibot.email} auth error")
+                    self.wait_auth[apibot.email] = 0
+                    return False, "auth_error"
+                return False, "server_error"
+            except BotOfflineError:
+                return False, "bot_offline"
+            except BotBusyError:
+                continue
+            except Exception as e:
+                logger.error(f"{apibot.email} work failed {e}")
+                retry += 1
+                if retry > 3:
+                    break
+                continue
+            return resp, 'success'
         return False, "max_retry"
 
     async def api_request(self, data):
@@ -336,8 +340,13 @@ class ApiBotManager:
     ):
         message = message.strip()
         chat_info = None
-        if openid and not new_chat:
+        if openid:
             chat_info = await models.User.get_chat_info(openid)
+        if new_chat and chat_info and chat_info.get("conversation_id", None):  # 删除旧对话
+            await models.Conversation.update_status(chat_info["conversation_id"], 2)
+            await models.User.clear_conversation(openid)
+            chat_info.pop("conversation_id", None)
+            chat_info.pop("parent_id", None)
         chat_info = chat_info or {}
         email = chat_info.get("email", None)
         converstation_id = chat_info.get("conversation_id", None)
@@ -349,18 +358,21 @@ class ApiBotManager:
             parent_id=parent_id,
             model=model,
             auto_continue=True,
-            history_and_training_disabled=True
+            history_and_training_disabled=bool(openid)
         )
-        resp, reason = await self.work(func, email, timeout)
-        if resp:
-            email = resp.pop("email", None) or email
-            await self.record_chat(email, openid, resp)
-            return resp.get("message", "")
-        else:
-            logger.error(reason)
-            if openid and reason == "conversation_not_found":
-                await self.new_conversation(openid)
-            return ""
+        while True:
+            resp, reason = await self.work(func, email, timeout)
+            if resp:
+                email = resp.pop("email", None) or email
+                await self.record_chat(email, openid, resp)
+                return resp.get("message", "")
+            else:
+                logger.error(reason)
+                if openid:
+                    if reason == "conversation_not_found" or reason == "bot_offline":
+                        await self.new_conversation(openid)
+                        continue
+                return ""
 
 
 if __name__ == "__main__":

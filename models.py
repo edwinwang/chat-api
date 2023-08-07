@@ -2,7 +2,8 @@ import datetime
 import os
 
 # 导入SQLAlchemy、create_engine和Column、String、Integer、Float、Boolean、DateTime等类
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, select, Text
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, select, Text, update
+from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -48,6 +49,7 @@ class Conversation(Base):
     is_active = Column(Boolean, default=True)
     owner_email = Column(String(50), ForeignKey('accounts.email'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'))
+    status = Column(TINYINT, default=1, nullable=False)
     owner = relationship('Account', backref='conversations')
     user = relationship('User', uselist=False, primaryjoin="User.id==Conversation.user_id")
 
@@ -56,6 +58,13 @@ class Conversation(Base):
         stmt = select(cls).filter(cls.conversation_id == cid)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+    @classmethod
+    async def update_status(cls, cid: str, status: int) -> None:
+        async with Session() as session:
+            stmt = update(cls).where(cls.conversation_id == cid).values(status=status)
+            await session.execute(stmt)
+            await session.commit()
 
 
 class Message(Base):
@@ -92,13 +101,13 @@ class User(Base):
             stmt = select(cls).filter(cls.openid == openid)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
-    
+
     @classmethod
     async def get_by_openid_with_session(cls, session: AsyncSession, openid: str) -> 'User':
         stmt = select(cls).filter(cls.openid == openid)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
-    
+
     @classmethod
     async def create(cls, openid: str, conversation_id: str) -> 'User':
         async with Session() as session:
@@ -131,6 +140,14 @@ class User(Base):
                 'conversation_id': conversation_id,
                 'parent_id': parent_id
             }
+
+    @classmethod
+    async def clear_conversation(cls, openid: str) -> None:
+        async with Session() as session:
+            user = await cls.get_by_openid_with_session(session, openid)
+            if user:
+                user.conversation_id = ''
+                await session.commit()
             
 
 async def create_tables():
