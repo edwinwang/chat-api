@@ -27,9 +27,9 @@ rules:
         functions from functions list for additional data.
     2. If no functions are needed call, response user`s request based on your knowledge.
     3. Output should be a JSON object with follow properties:
-        1) 'content' -- display to user, if not function is needed, this should not be null
+        1) 'content' -- display to user, if no function is needed, this should not be null
         2) 'function_calls' -- list of functions and parameters
-        3) 'explanation' -- debug info
+        3) 'explanation' -- debug info for you actions
         4) 'finish_reason' -- stop, length, function_call, content_filter.
     4. Avoid use markdown syntax or any line breaks in your responses.
     Example JSON object:
@@ -153,6 +153,7 @@ def new_chat_completion(full_text: str) -> Dict:
     if full_text and 'function_calls' in full_text and 'explanation' in full_text:
         try:
             data = json.loads(full_text)
+            content = data.get('content', None)
             function_call = data['function_calls']
             finish_reason = data['finish_reason']
         except Exception as e:

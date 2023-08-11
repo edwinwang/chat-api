@@ -756,7 +756,7 @@ class AsyncBot(Bot):
                 try:
                     line = json.loads(line)
                 except json.decoder.JSONDecodeError as e:
-                    bot_logger.warning(f"Decode response failed: {e}")
+                    bot_logger.warning(f"Decode response failed: {line} {e}")
                     continue
                 if not self.check_fields(line):
                     continue
