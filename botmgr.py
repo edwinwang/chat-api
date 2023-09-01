@@ -358,7 +358,7 @@ class ApiBotManager:
             parent_id=parent_id,
             model=model,
             auto_continue=True,
-            history_and_training_disabled=bool(openid)
+            history_and_training_disabled=(not bool(openid))
         )
         while True:
             resp, reason = await self.work(func, email, timeout)
