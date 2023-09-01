@@ -289,6 +289,7 @@ class ApiBotManager:
                         logger.info("no bot available, wait...")
                         await asyncio.sleep(1)
                         timeout -= 1
+                        continue
                     else:
                         return False, "timeout"
             except OpenAIError as e:

@@ -230,6 +230,7 @@ class Bot:
             }
         """
         bot_logger.debug("Sending the payload")
+        bot_logger.debug(data)
         if data.get("model", "").startswith("gpt-4"):
             try:
                 data["arkose_token"] = self.get_arkose_token()
@@ -711,7 +712,7 @@ class AsyncBot(Bot):
                 "supports_modapi": false
             }
         """
-        bot_logger.debug("Sending the payload")
+        bot_logger.debug("Sending the payload", data)
         if not self.support_models:
             await self.models()
         model = data.get("model", "")
@@ -742,7 +743,7 @@ class AsyncBot(Bot):
 
             finish_details = None
             async for line in response.aiter_lines():
-                bot_logger.debug(line)
+                # bot_logger.debug(line)
                 # remove b' and ' at the beginning and end and ignore case
                 if line.lower() == "internal server error":
                     bot_logger.error(f"Internal Server Error: {line}")
@@ -759,6 +760,7 @@ class AsyncBot(Bot):
                     bot_logger.warning(f"Decode response failed: {line} {e}")
                     continue
                 if not self.check_fields(line):
+                    bot_logger.warning(f"Check fields failed: {line}")
                     continue
                     # bot_logger.error(f"Invalid response: {line}")
                     # raise OpenAIError("invalid_response")
